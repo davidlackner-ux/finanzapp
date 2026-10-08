@@ -1,5 +1,5 @@
 // Offline support: app shell is cached; Tesseract (versioned CDN files) is cached after first use.
-const CACHE = 'finanzapp-v1';
+const CACHE = 'finanzapp-v2';
 const SHELL = [
   './',
   'index.html',
@@ -7,9 +7,19 @@ const SHELL = [
   'manifest.webmanifest',
   'js/app.js',
   'js/categories.js',
+  'js/charts.js',
   'js/db.js',
   'js/ocr.js',
   'js/parser.js',
+  'js/recurring.js',
+  'js/settings.js',
+  'js/stats.js',
+  'js/store.js',
+  'js/txform.js',
+  'js/ui.js',
+  'js/view-home.js',
+  'js/view-plan.js',
+  'js/view-stats.js',
   'icons/icon.svg',
   'icons/icon-192.png',
   'icons/icon-512.png',

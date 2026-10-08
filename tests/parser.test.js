@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseAmountInput, centsToInput, parseReceipt } from '../js/parser.js';
+import { parseAmountInput, evalAmount, centsToInput, parseReceipt } from '../js/parser.js';
 
 const TODAY = new Date('2026-10-08T12:00:00Z');
 
@@ -16,6 +16,20 @@ test('parseAmountInput understands German and English formats', () => {
   assert.ok(Number.isNaN(parseAmountInput('')));
   assert.ok(Number.isNaN(parseAmountInput('abc')));
   assert.ok(Number.isNaN(parseAmountInput('1,234')));
+});
+
+test('evalAmount works as a small calculator', () => {
+  assert.equal(evalAmount('12,50'), 1250);
+  assert.equal(evalAmount('12,50+3,20'), 1570);
+  assert.equal(evalAmount('3*2,50'), 750);
+  assert.equal(evalAmount('10+2*3'), 1600);
+  assert.equal(evalAmount('100/3'), 3333);
+  assert.equal(evalAmount('20 - 4,99'), 1501);
+  assert.equal(evalAmount('0,1+0,2'), 30);
+  assert.equal(evalAmount('1.234+1'), 123500);
+  assert.ok(Number.isNaN(evalAmount('5+')));
+  assert.ok(Number.isNaN(evalAmount('5/0')));
+  assert.ok(Number.isNaN(evalAmount('a+b')));
 });
 
 test('centsToInput formats with comma', () => {
@@ -38,12 +52,14 @@ Rückgeld BAR EUR 4,53
 Steuer % Netto Steuer Brutto
 B= 7,0% 5,11 0,36 5,47
 08.10.2026 14:23 Bon-Nr.:4711`;
-  assert.deepEqual(parseReceipt(text, TODAY), {
-    amount: 547,
-    date: '2026-10-08',
-    merchant: 'Rewe',
-    category: 'lebensmittel',
-  });
+  const r = parseReceipt(text, TODAY);
+  assert.equal(r.amount, 547);
+  assert.equal(r.date, '2026-10-08');
+  assert.equal(r.merchant, 'Rewe');
+  assert.equal(r.category, 'lebensmittel');
+  assert.ok(r.candidates.includes(279));
+  assert.ok(!r.candidates.includes(547), 'chosen total is not repeated');
+  assert.ok(!r.candidates.includes(1000), 'cash given is not offered');
 });
 
 test('total on the line after the keyword and two-digit year', () => {
@@ -87,5 +103,5 @@ Kauf am 01.10.2026`;
 });
 
 test('empty text yields nulls', () => {
-  assert.deepEqual(parseReceipt('', TODAY), { amount: null, date: null, merchant: null, category: null });
+  assert.deepEqual(parseReceipt('', TODAY), { amount: null, candidates: [], date: null, merchant: null, category: null });
 });

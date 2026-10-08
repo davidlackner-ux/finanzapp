@@ -24,6 +24,42 @@ export function parseAmountInput(input) {
   return Number(intPart || 0) * 100 + Number(frac.padEnd(2, '0'));
 }
 
+/** Evaluates simple sums like "12,50+3,20" or "3*2,50" (for the amount field). Returns cents or NaN. */
+export function evalAmount(input) {
+  const s = String(input ?? '').replace(/[€\s]/g, '').replace(/×/g, '*').replace(/÷/g, '/');
+  if (!/[+\-*/]/.test(s)) return parseAmountInput(s);
+
+  const values = [];
+  const ops = [];
+  let expectNumber = true;
+  for (const token of s.split(/([+\-*/])/).filter((t) => t !== '')) {
+    if (expectNumber) {
+      const cents = parseAmountInput(token);
+      if (Number.isNaN(cents)) return NaN;
+      values.push(cents / 100);
+    } else {
+      ops.push(token);
+    }
+    expectNumber = !expectNumber;
+  }
+  if (expectNumber) return NaN;
+
+  // * and / before + and -
+  const terms = [values[0]];
+  const addOps = [];
+  ops.forEach((op, i) => {
+    const v = values[i + 1];
+    if (op === '*') terms[terms.length - 1] *= v;
+    else if (op === '/') terms[terms.length - 1] = v === 0 ? NaN : terms[terms.length - 1] / v;
+    else {
+      addOps.push(op);
+      terms.push(v);
+    }
+  });
+  const result = addOps.reduce((acc, op, i) => (op === '+' ? acc + terms[i + 1] : acc - terms[i + 1]), terms[0]);
+  return Number.isFinite(result) ? Math.round(result * 100) : NaN;
+}
+
 /** Formats cents for an input field: 1250 -> "12,50". */
 export function centsToInput(cents) {
   return (cents / 100).toFixed(2).replace('.', ',');
@@ -37,7 +73,7 @@ const AMOUNT_RE = /(?<![\d.,])(\d{1,3}(?:\.\d{3})+|\d{1,6})\s?[,.]\s?(\d{2})(?![
 
 const TOTAL_STRONG = /(^|[^a-zäöü])(summe|gesamt\w*|total|zu\s*zahlen|zahlbetrag|endbetrag|rechnungsbetrag|bruttobetrag|brutto)(?![a-zäöü])/i;
 const TOTAL_WEAK = /(^|[^a-zäöü])(bar|ec|karte|girocard|visa|mastercard|maestro|kartenzahlung|betrag|eur)(?![a-zäöü])/i;
-const EXCLUDE = /(mwst|ust\b|netto(?!\s*markt)|steuer|mehrwert|r[üu]ckgeld|zur[üu]ck|gegeben|rabatt|pfand|zwischensumme|kunden|tel\.?|fax)/i;
+const EXCLUDE = /(mwst|ust\b|netto(?!\s*markt)|steuer|mehrwert|r(ü|u|ue)ckgeld|zur(ü|u|ue)ck|geg(eben|\.)|rabatt|pfand|zwischensumme|kunden|tel\.?|fax)/i;
 
 const MERCHANT_SKIP = /(rechnung|beleg|quittung|kasse|bon\b|filiale|tel|fax|www\.|http|str\.|stra(ss|ß)e|ust|steuer|datum|uhrzeit)/i;
 
@@ -113,6 +149,15 @@ function findTotal(lines) {
   return best?.value ?? null;
 }
 
+function findCandidates(lines, chosen) {
+  const all = new Set();
+  for (const line of lines) {
+    if (EXCLUDE.test(line)) continue;
+    for (const value of findAmounts(line)) if (value !== chosen && value > 0) all.add(value);
+  }
+  return [...all].sort((a, b) => b - a).slice(0, 4);
+}
+
 function findMerchant(lines) {
   for (const raw of lines.slice(0, 6)) {
     const line = raw.replace(/[^\p{L}\d&'.\- ]/gu, ' ').replace(/\s+/g, ' ').trim();
@@ -135,15 +180,18 @@ function guessCategory(text) {
 
 /**
  * Extracts the most likely total, date, merchant and category from OCR text of a receipt.
- * @returns {{ amount: number|null, date: string|null, merchant: string|null, category: string|null }}
+ * `candidates` are other amounts found on the receipt, offered as one-tap alternatives.
+ * @returns {{ amount: number|null, candidates: number[], date: string|null, merchant: string|null, category: string|null }}
  */
 export function parseReceipt(text, today = new Date()) {
   const lines = String(text ?? '')
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter(Boolean);
+  const amount = findTotal(lines);
   return {
-    amount: findTotal(lines),
+    amount,
+    candidates: findCandidates(lines, amount),
     date: findDate(lines.join('\n'), today),
     merchant: findMerchant(lines),
     category: guessCategory(lines.join('\n')),

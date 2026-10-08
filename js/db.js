@@ -1,17 +1,22 @@
-// IndexedDB storage: transactions + receipt photos (as Blobs, keyed by transaction id).
+// IndexedDB storage: transactions, receipt photos (Blobs keyed by transaction id), recurring rules and savings goals.
 
 const DB_NAME = 'finanzapp';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 let dbPromise;
 
 function openDb() {
   dbPromise ??= new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = () => {
+    req.onupgradeneeded = (e) => {
       const db = req.result;
-      const store = db.createObjectStore('transactions', { keyPath: 'id' });
-      store.createIndex('date', 'date');
-      db.createObjectStore('photos');
+      if (e.oldVersion < 1) {
+        db.createObjectStore('transactions', { keyPath: 'id' }).createIndex('date', 'date');
+        db.createObjectStore('photos');
+      }
+      if (e.oldVersion < 2) {
+        db.createObjectStore('recurring', { keyPath: 'id' });
+        db.createObjectStore('goals', { keyPath: 'id' });
+      }
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -23,18 +28,25 @@ async function withStores(names, mode, fn) {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(names, mode);
-    const stores = names.map((n) => tx.objectStore(n));
     let result;
-    const done = fn(...stores);
-    if (done instanceof IDBRequest) done.onsuccess = () => (result = done.result);
+    const req = fn(...names.map((n) => tx.objectStore(n)));
+    if (req instanceof IDBRequest) req.onsuccess = () => (result = req.result);
     tx.oncomplete = () => resolve(result);
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error);
   });
 }
 
-export function getAllTransactions() {
-  return withStores(['transactions'], 'readonly', (s) => s.getAll());
+export function getAll(store) {
+  return withStores([store], 'readonly', (s) => s.getAll());
+}
+
+export function put(store, ...values) {
+  return withStores([store], 'readwrite', (s) => values.forEach((v) => s.put(v)));
+}
+
+export function remove(store, id) {
+  return withStores([store], 'readwrite', (s) => s.delete(id));
 }
 
 export function getPhoto(id) {
@@ -75,17 +87,16 @@ export async function getAllPhotos() {
   });
 }
 
-/** Upserts many transactions and photos ({ [id]: Blob }) in one go. */
-export function importData(transactions, photos = {}) {
-  return withStores(['transactions', 'photos'], 'readwrite', (txs, ph) => {
-    for (const t of transactions) txs.put(t);
-    for (const [id, blob] of Object.entries(photos)) ph.put(blob, id);
+/** Upserts everything from a backup in one go. */
+export function importData({ transactions = [], photos = {}, recurring = [], goals = [] }) {
+  return withStores(['transactions', 'photos', 'recurring', 'goals'], 'readwrite', (txs, ph, rec, gl) => {
+    transactions.forEach((t) => txs.put(t));
+    Object.entries(photos).forEach(([id, blob]) => ph.put(blob, id));
+    recurring.forEach((r) => rec.put(r));
+    goals.forEach((g) => gl.put(g));
   });
 }
 
 export function clearAll() {
-  return withStores(['transactions', 'photos'], 'readwrite', (txs, photos) => {
-    txs.clear();
-    photos.clear();
-  });
+  return withStores(['transactions', 'photos', 'recurring', 'goals'], 'readwrite', (...stores) => stores.forEach((s) => s.clear()));
 }
