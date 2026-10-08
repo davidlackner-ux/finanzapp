@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="description" content="Finanzen schnell tracken – mit Belegfotos und Texterkennung.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Finanzen">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Finanzapp</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <button class="icon-btn" id="prevMonth" aria-label="Vorheriger Monat">‹</button>
+    <h1 id="monthLabel">…</h1>
+    <button class="icon-btn" id="nextMonth" aria-label="Nächster Monat">›</button>
+    <button class="icon-btn settings-btn" id="openSettings" aria-label="Einstellungen">⚙︎</button>
+  </header>
+
+  <main>
+    <section class="card summary">
+      <div class="summary-main">
+        <span class="label">Ausgaben</span>
+        <strong id="sumExpense" class="big">0,00 €</strong>
+      </div>
+      <div class="summary-row">
+        <div><span class="label">Einnahmen</span><span id="sumIncome" class="positive">0,00 €</span></div>
+        <div><span class="label">Saldo</span><span id="sumBalance">0,00 €</span></div>
+      </div>
+      <div id="budgetBox" class="budget" hidden>
+        <div class="budget-bar"><div id="budgetFill"></div></div>
+        <span id="budgetText" class="label"></span>
+      </div>
+    </section>
+
+    <section class="card" id="breakdownCard" hidden>
+      <h2>Kategorien</h2>
+      <div id="categoryBreakdown"></div>
+    </section>
+
+    <section>
+      <div class="list-head">
+        <h2>Buchungen</h2>
+        <button id="clearFilter" class="chip active" hidden></button>
+      </div>
+      <div id="txList"></div>
+    </section>
+  </main>
+
+  <div class="actions">
+    <button id="scanBtn" class="fab secondary"><span aria-hidden="true">📷</span> Beleg</button>
+    <button id="addBtn" class="fab" aria-label="Buchung hinzufügen">＋</button>
+  </div>
+
+  <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
+  <input type="file" id="galleryInput" accept="image/*" hidden>
+
+  <dialog id="txDialog" class="sheet">
+    <form id="txForm" method="dialog" novalidate>
+      <div class="sheet-head">
+        <h2 id="txDialogTitle">Neue Buchung</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Schließen">✕</button>
+      </div>
+
+      <div class="segmented" role="radiogroup">
+        <label><input type="radio" name="type" value="expense" checked><span>Ausgabe</span></label>
+        <label><input type="radio" name="type" value="income"><span>Einnahme</span></label>
+      </div>
+
+      <label class="amount-field">
+        <input id="amountInput" name="amount" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off" required>
+        <span>€</span>
+      </label>
+
+      <div class="photo-box">
+        <img id="photoPreview" alt="Beleg" hidden>
+        <div class="photo-actions">
+          <button type="button" class="btn small" id="takePhoto">📷 Foto</button>
+          <button type="button" class="btn small" id="pickPhoto">🖼️ Galerie</button>
+          <button type="button" class="btn small danger-text" id="removePhoto" hidden>Entfernen</button>
+        </div>
+        <div id="ocrStatus" class="ocr-status" hidden></div>
+      </div>
+
+      <div id="categoryChips" class="chips"></div>
+
+      <div class="field-row">
+        <label class="field"><span>Datum</span><input id="dateInput" name="date" type="date" required></label>
+      </div>
+      <label class="field"><span>Notiz / Händler</span><input id="noteInput" name="note" type="text" maxlength="80" placeholder="z. B. Rewe, Tanken, Kino…"></label>
+
+      <p id="formError" class="error" hidden></p>
+
+      <div class="sheet-actions">
+        <button type="button" class="btn danger" id="deleteTx" hidden>Löschen</button>
+        <button type="submit" class="btn primary" id="saveTx">Speichern</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="settingsDialog" class="sheet">
+    <div class="sheet-head">
+      <h2>Einstellungen</h2>
+      <button type="button" class="icon-btn" data-close aria-label="Schließen">✕</button>
+    </div>
+    <label class="field">
+      <span>Monatsbudget für Ausgaben (leer = kein Budget)</span>
+      <input id="budgetInput" type="text" inputmode="decimal" placeholder="z. B. 1.200">
+    </label>
+    <label class="toggle">
+      <input id="ocrToggle" type="checkbox" checked>
+      <span>Belege automatisch auslesen (Texterkennung)</span>
+    </label>
+    <h3>Daten</h3>
+    <p id="storageInfo" class="label"></p>
+    <div class="stack">
+      <button class="btn" id="exportCsv">📄 Als CSV exportieren (Excel)</button>
+      <button class="btn" id="exportBackup">💾 Backup herunterladen</button>
+      <button class="btn" id="importBackup">📥 Backup wiederherstellen</button>
+      <input type="file" id="importInput" accept="application/json,.json" hidden>
+      <button class="btn danger" id="deleteAll">🗑️ Alle Daten löschen</button>
+    </div>
+    <p class="label small">Alle Daten bleiben nur auf diesem Gerät. Mach ab und zu ein Backup.</p>
+  </dialog>
+
+  <dialog id="photoDialog" class="photo-viewer">
+    <img id="photoFull" alt="Beleg">
+    <button type="button" class="icon-btn" data-close aria-label="Schließen">✕</button>
+  </dialog>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

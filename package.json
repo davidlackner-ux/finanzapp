@@ -1,0 +1,11 @@
+{
+  "name": "finanzapp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Finanzen schnell tracken – mit Belegfotos und Texterkennung, alles lokal im Browser.",
+  "scripts": {
+    "start": "npx --yes serve@14 -l 8080 .",
+    "test": "node --test tests/*.test.js"
+  }
+}
