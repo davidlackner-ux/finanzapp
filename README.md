@@ -34,9 +34,10 @@ Finanzen schnell und einfach tracken – direkt am Handy, mit **Fotos von Rechnu
 Die App ist eine reine Web-App (PWA) und lässt sich kostenlos über **GitHub Pages** hosten:
 
 1. Diesen Stand in `main` mergen.
-2. Auf GitHub: **Settings → Pages → Source: „Deploy from a branch“**, Branch `main`, Ordner `/ (root)` → Speichern.
-3. Nach ca. 1 Minute ist die App unter `https://<dein-github-name>.github.io/finanzapp/` erreichbar.
-4. Am Handy öffnen und zum Home-Bildschirm hinzufügen:
+2. Das Repo muss **öffentlich** sein (Settings → Danger Zone → Change visibility → Public) – GitHub Pages ist bei privaten Repos kostenpflichtig. Öffentlich ist nur der Code; deine Finanzdaten liegen ausschließlich auf deinem Gerät.
+3. Auf GitHub: **Settings → Pages → Source: „Deploy from a branch“**, Branch `main`, Ordner `/ (root)` → Speichern.
+4. Nach ca. 1 Minute ist die App unter `https://<dein-github-name>.github.io/finanzapp/` erreichbar.
+5. Am Handy öffnen und zum Home-Bildschirm hinzufügen:
    - **iPhone (Safari):** Teilen-Symbol → „Zum Home-Bildschirm“
    - **Android (Chrome):** Menü ⋮ → „App installieren“ bzw. „Zum Startbildschirm hinzufügen“
 
