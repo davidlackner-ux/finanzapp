@@ -62,8 +62,11 @@ Frage „Erfassen Sie oder Ihre Drittanbieter Daten von dieser App?“ → **Nei
 
 ## Altersfreigabe
 
-Im Fragebogen überall **„Keine“** bzw. **„Nein“** auswählen (keine Gewalt, keine In-App-Käufe, kein Chat, kein Internetzugang, keine Werbung). Ergebnis: die niedrigste Altersstufe.
+Im Fragebogen überall **„Keine“** bzw. **„Nein“** auswählen (keine Gewalt, keine In-App-Käufe, kein Chat, kein Internetzugang, keine Werbung). Auch bei **„Wettbewerbe“**: Der Rekord ist nur persönlich und bleibt auf dem Gerät. Ergebnis: 4+.
 
 ## Screenshots
 
-Fertig im Ordner `store/screenshots/`: 4 Bilder im Format 1320 × 2868 (6,9-Zoll-iPhone), ohne Transparenz. In App Store Connect beim iPhone-Bereich „6,9 Zoll“ hochladen, die Reihenfolge stimmt bereits (1 bis 4).
+Fertig im Ordner `store/screenshots/`, jeweils 4 Bilder ohne Transparenz, die Reihenfolge stimmt bereits (1 bis 4):
+
+- `6.9-zoll/`: 1320 × 2868, für „iPhone 6,9 Zoll“. **Das reicht normalerweise.**
+- `6.3-zoll/`: 1206 × 2622, nur falls App Store Connect zusätzlich nach 6,3 Zoll fragt.

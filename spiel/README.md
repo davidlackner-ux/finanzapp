@@ -36,7 +36,7 @@ Du brauchst nur deinen **Windows-PC**, dein **iPhone** und einen Browser. Die iP
 
 | Was | Kosten |
 |---|---|
-| Apple Developer Program | 99 € pro Jahr |
+| Apple Developer Program | 99 US-Dollar pro Jahr, in Deutschland rund 99 € (der genaue Betrag steht bei der Anmeldung) |
 | GitHub (Mac in der Cloud) | kostenlos (öffentliches Repository) |
 
 Einmalig rechne mit etwa 1–2 Stunden Einrichtung, dazu 1–2 Tage Wartezeit auf Apple (Freischaltung des Accounts und App-Prüfung).
@@ -47,9 +47,10 @@ Den „Run workflow“-Knopf zeigt GitHub nur für Workflows im Haupt-Branch `ma
 
 ### Schritt 1: Apple Developer Program beitreten
 
-Am einfachsten mit der App **„Apple Developer“** auf deinem iPhone (aus dem App Store) → **Konto** → **Jetzt registrieren**. Alternativ im Browser unter developer.apple.com/programs/enroll.
+Entweder mit der App **„Apple Developer“** auf deinem iPhone (aus dem App Store) → **Konto** → **Jetzt registrieren**, oder komplett am Windows-PC im Browser unter developer.apple.com/programs/enroll.
 
-- Du brauchst eine Apple-ID mit Zwei-Faktor-Authentifizierung und musst volljährig sein.
+- Du brauchst eine Apple-ID mit Zwei-Faktor-Authentifizierung, deinen echten Vor- und Nachnamen darin und musst volljährig sein.
+- Bezahl mit einer Karte auf deinen eigenen Namen, sonst verzögert sich die Freischaltung.
 - Melde dich als **Einzelperson** an. Dein echter Name erscheint dann im App Store als Anbieter.
 - Die Freischaltung dauert meist ein paar Stunden bis zwei Tage.
 
@@ -64,8 +65,9 @@ Die Bundle-ID ist der eindeutige technische Name der App. Sie lautet `app.astroh
 
 ### Schritt 3: App in App Store Connect anlegen
 
-1. appstoreconnect.apple.com → **Apps** → **+** → **Neue App**
-2. Plattform **iOS**, Name `Astro Hüpfer`, Primärsprache **Deutsch**, Bundle-ID aus Schritt 2 auswählen, SKU z. B. `astrohuepfer`, Zugriff **Uneingeschränkt**.
+1. appstoreconnect.apple.com → **Business** → offene **Vereinbarungen** akzeptieren. Ohne das kannst du keine App anlegen, und der Upload scheitert mit unklaren Fehlermeldungen.
+2. **Apps** → **+** → **Neue App**
+3. Plattform **iOS**, Name `Astro Hüpfer`, Primärsprache **Deutsch**, Bundle-ID aus Schritt 2 auswählen, SKU z. B. `astrohuepfer`, Zugriff **Uneingeschränkt**.
 
 Ist der Name schon vergeben, meldet App Store Connect das hier sofort.
 
@@ -75,7 +77,7 @@ Mit diesem Schlüssel darf GitHub in deinem Namen die App signieren und hochlade
 
 1. App Store Connect → **Benutzer und Zugriff** → Reiter **Integrationen** → **App Store Connect API** → **Teamschlüssel**
 2. Beim ersten Mal **Zugriff anfordern** bestätigen.
-3. **+** → Name `GitHub`, Zugriff **Admin** → **Generieren**
+3. **+** → Name `GitHub`, Zugriff **Admin** → **Generieren**. Wichtig: ein **Teamschlüssel**, kein „individueller Schlüssel“.
 4. **API-Schlüssel laden** → eine Datei `AuthKey_XXXXXXXXXX.p8` wird heruntergeladen. **Das geht nur ein einziges Mal**, also gut aufheben.
 5. Notiere dir die **Schlüssel-ID** (in der Tabelle) und die **Aussteller-ID** (Issuer ID, oben über der Tabelle).
 6. Deine **Team-ID** findest du unter developer.apple.com/account → **Mitgliedschaftsdetails**.
@@ -98,7 +100,7 @@ Secrets sind verschlüsselt und auch in einem öffentlichen Repository für niem
 ### Schritt 6: App bauen und hochladen
 
 1. Im Repository: **Actions** → links **iOS-App** → **Run workflow** → Branch `main` → **Run workflow**.
-2. Nach etwa 5–10 Minuten ist der Lauf grün. In der Zusammenfassung steht „Version … wurde zu App Store Connect hochgeladen“.
+2. Nach etwa 5–10 Minuten ist der Lauf grün. In der Zusammenfassung steht z. B. „Version 1.0.0 (Build 7.1) wurde zu App Store Connect hochgeladen“.
 3. Apple verarbeitet den Build danach noch 10–30 Minuten. Du bekommst eine E-Mail, sobald er bereit ist.
 
 Ist der Lauf rot, klick ihn an und schau dir den roten Schritt an. Oder sag mir einfach Bescheid, ich kann die Logs lesen und den Fehler beheben.
@@ -115,12 +117,12 @@ Ist der Lauf rot, klick ihn an und schau dir den roten Schritt an. Oder sag mir 
 
 Dann in App Store Connect bei deiner App:
 
-1. **Screenshots**: die 4 Bilder aus `store/screenshots/` beim iPhone mit **6,9 Zoll** hochladen.
+1. **Screenshots**: die 4 Bilder aus `store/screenshots/6.9-zoll/` beim iPhone mit **6,9 Zoll** hochladen. Fragt App Store Connect zusätzlich nach **6,3 Zoll**, nimm die aus `store/screenshots/6.3-zoll/`.
 2. **Texte**: Untertitel, Werbetext, Beschreibung, Keywords, Support-URL, Copyright aus `store/app-store-texte.md` kopieren.
-3. **App-Informationen**: Kategorie Spiele → Arcade, Altersfreigabe-Fragebogen ausfüllen (überall „Keine“/„Nein“), Datenschutz-URL eintragen.
+3. **App-Informationen**: Kategorie Spiele → Arcade, Datenschutz-URL eintragen, Altersfreigabe-Fragebogen ausfüllen (überall „Keine“ bzw. „Nein“, auch bei „Wettbewerbe“: der Rekord ist nur persönlich und lokal).
 4. **App-Datenschutz**: „Wir erfassen keine Daten von dieser App“.
 5. **Preise und Verfügbarkeit**: Kostenlos, alle Länder.
-6. **EU-Händlerstatus (Digital Services Act)**: Wer mit der App Geld verdient, gilt als Händler, und dann werden **Adresse und Telefonnummer öffentlich** im App Store angezeigt. Für ein kostenloses Hobby-Spiel ohne Werbung kann man in der Regel „kein Händler“ angeben.
+6. **EU-Händlerstatus (Digital Services Act)**, unter **Business** → **Compliance**: Wer mit der App Geld verdient, gilt als Händler, und dann werden **Adresse und Telefonnummer öffentlich** im App Store angezeigt. Für ein kostenloses Hobby-Spiel ohne Werbung kann man in der Regel „kein Händler“ angeben.
 7. Bei **Build** den hochgeladenen Build auswählen.
 
 ### Schritt 9: Zur Prüfung einreichen
@@ -133,7 +135,7 @@ Dann in App Store Connect bei deiner App:
 2. In `package.json` die `"version"` erhöhen, z. B. von `1.0.0` auf `1.0.1`.
 3. Workflow wie in Schritt 6 starten, dann in App Store Connect eine neue Version anlegen und einreichen.
 
-Die Build-Nummer zählt GitHub automatisch hoch.
+Die Build-Nummer zählt GitHub automatisch hoch. Jeder Push auf `spiel/` startet außerdem einen Probe-Build, der zeigt, ob die App noch fehlerfrei baut. Hochgeladen wird dabei nichts.
 
 ### Worauf Apple bei der Prüfung achtet
 

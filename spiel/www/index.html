@@ -115,10 +115,14 @@ function flap() {
   tone(320, 0.12, 'triangle', 0.05, 640);
   burst(PX - 16, ship.y + 4, 8, ['#ffd166', '#ff8c42', '#fff'], 2, 22);
 }
-addEventListener('pointerdown', e => { if (e.target.closest('a')) return; e.preventDefault(); flap(); });
+addEventListener('pointerdown', e => { if (e.target.closest?.('a')) return; e.preventDefault(); flap(); });
 addEventListener('keydown', e => { if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); flap(); } });
-// App verlassen (Anruf, Home-Taste) = Pause statt Absturz
-document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') state = 'pause'; });
+// App verlassen (Anruf, Home-Taste) = Pause statt Absturz; Münzen sichern, falls die App beendet wird
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) return;
+  if (state === 'play') state = 'pause';
+  save();
+});
 
 function die() {
   if (state !== 'play') return;
