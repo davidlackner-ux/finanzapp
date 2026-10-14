@@ -1,0 +1,20 @@
+{
+  "name": "astro-huepfer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Astro Hüpfer – ein simples Ein-Finger-Weltraumspiel.",
+  "scripts": {
+    "start": "npx --yes serve@14 -l 8081 www",
+    "ios": "cap sync ios && cap open ios",
+    "icons": "capacitor-assets generate --ios --iconBackgroundColor '#0b0820' --splashBackgroundColor '#0b0820'"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/haptics": "^8.0.0",
+    "@capacitor/ios": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.0.0"
+  }
+}
