@@ -18,13 +18,18 @@
        touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
   canvas{display:block}
   #safe{position:fixed;top:0;padding-top:env(safe-area-inset-top);visibility:hidden;pointer-events:none}
+  #links{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom));text-align:center;
+         font:600 14px system-ui,-apple-system,sans-serif;color:#6d6496}
+  #links a{color:#a99fcf;text-decoration:none;padding:10px 12px}
+  #links[hidden]{display:none}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 <div id="safe"></div>
+<nav id="links"><a href="datenschutz.html">Datenschutz</a> · <a href="support.html">Hilfe</a></nav>
 <script>
-const c = document.getElementById('c'), x = c.getContext('2d');
+const c = document.getElementById('c'), x = c.getContext('2d'), links = document.getElementById('links');
 const W = 360, PX = 90, R = 13, STEP = 1000 / 60;
 let H = 640, SAFE = 0;
 
@@ -60,6 +65,7 @@ function reset() {
   walls = []; coins = []; parts = []; popups = [];
   score = 0; combo = 0; frame = 0; speed = 2.6; gap = 170; shake = 0; flash = 0; newBest = false;
   state = 'ready';
+  links.hidden = false;
 }
 
 // ---------- Sound (ohne Dateien) ----------
@@ -104,12 +110,12 @@ function popup(t, px, py, col) { popups.push({ t, x: px, y: py, life: 50, c: col
 function flap() {
   unlockAudio();
   if (state === 'over') { if (frame > 40) reset(); return; }
-  if (state === 'ready' || state === 'pause') state = 'play';
+  if (state === 'ready' || state === 'pause') { state = 'play'; links.hidden = true; }
   ship.v = -7.4;
   tone(320, 0.12, 'triangle', 0.05, 640);
   burst(PX - 16, ship.y + 4, 8, ['#ffd166', '#ff8c42', '#fff'], 2, 22);
 }
-addEventListener('pointerdown', e => { e.preventDefault(); flap(); });
+addEventListener('pointerdown', e => { if (e.target.closest('a')) return; e.preventDefault(); flap(); });
 addEventListener('keydown', e => { if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); flap(); } });
 // App verlassen (Anruf, Home-Taste) = Pause statt Absturz
 document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') state = 'pause'; });
