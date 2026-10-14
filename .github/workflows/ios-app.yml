@@ -1,0 +1,115 @@
+# Baut die iPhone-App (spiel/) auf einem Mac von GitHub – ganz ohne eigenen Mac.
+# - Bei jedem Push: Probe-Build ohne Signatur (zeigt, ob alles kompiliert).
+# - Von Hand gestartet (Actions → iOS-App → Run workflow): signieren und zu TestFlight hochladen.
+#   Dafür müssen die Secrets ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 und APPLE_TEAM_ID gesetzt sein (siehe spiel/README.md).
+name: iOS-App
+
+on:
+  push:
+    paths:
+      - 'spiel/**'
+      - '.github/workflows/ios-app.yml'
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: 'Zu TestFlight hochladen'
+        type: boolean
+        default: true
+
+concurrency:
+  group: ios-app-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      HAS_SIGNING: ${{ secrets.ASC_KEY_ID != '' && secrets.ASC_ISSUER_ID != '' && secrets.ASC_KEY_P8 != '' && secrets.APPLE_TEAM_ID != '' }}
+    defaults:
+      run:
+        working-directory: spiel
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: spiel/package-lock.json
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Spiel ins Xcode-Projekt kopieren
+        run: npx cap sync ios
+
+      - name: Probe-Build (ohne Signatur)
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.upload) }}
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO build | tail -n 40
+          exit ${PIPESTATUS[0]}
+
+      - name: Secrets prüfen
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.upload && env.HAS_SIGNING != 'true' }}
+        run: |
+          echo "::error::Es fehlen Secrets. Benötigt: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8, APPLE_TEAM_ID (siehe spiel/README.md)."
+          exit 1
+
+      - name: Signieren und zu TestFlight hochladen
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.upload && env.HAS_SIGNING == 'true' }}
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s\n' "$ASC_KEY_P8" > "$KEY_PATH"
+          AUTH=(-allowProvisioningUpdates
+                -authenticationKeyPath "$KEY_PATH"
+                -authenticationKeyID "$ASC_KEY_ID"
+                -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            "${AUTH[@]}" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            archive | tail -n 60
+
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>${APPLE_TEAM_ID}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+          </dict>
+          </plist>
+          PLIST
+
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            "${AUTH[@]}"
+
+          echo "### ✅ Build $BUILD_NUMBER wurde zu App Store Connect hochgeladen" >> "$GITHUB_STEP_SUMMARY"
+          echo "In ca. 10–30 Minuten erscheint er in TestFlight." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Schlüssel entfernen
+        if: always()
+        run: rm -f "$RUNNER_TEMP"/AuthKey_*.p8
