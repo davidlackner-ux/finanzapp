@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0b0820">
+<title>Astro Hüpfer</title>
+<style>
+  html,body{margin:0;height:100%;background:#0b0820;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+  canvas{display:block;margin:0 auto;height:100%;max-width:100%}
+</style>
+</head>
+<body>
+<canvas id="c" width="360" height="640"></canvas>
+<script>
+const c = document.getElementById('c'), x = c.getContext('2d');
+const W = 360, H = 640, PX = 90, R = 13;
+
+// ---------- Zustand ----------
+let ship, walls, coins, parts, popups, score, combo, state, frame, speed, gap, shake, flash, newBest;
+let best = 0, bank = 0;
+try { best = +localStorage.getItem('astroBest') || 0; bank = +localStorage.getItem('astroCoins') || 0; } catch (e) {}
+const save = () => { try { localStorage.setItem('astroBest', best); localStorage.setItem('astroCoins', bank); } catch (e) {} };
+
+// Parallax-Sterne & Planeten
+const stars = Array.from({ length: 90 }, () => ({ x: Math.random() * W, y: Math.random() * H, z: Math.random() * 0.8 + 0.2 }));
+const planets = [
+  { x: 280, y: 140, r: 46, c1: '#ff7eb3', c2: '#7a2a8c', s: 0.15, ring: true },
+  { x: 60, y: 420, r: 22, c1: '#6be4ff', c2: '#1d4f9c', s: 0.25 }
+];
+
+function reset() {
+  ship = { y: H / 2, v: 0 };
+  walls = []; coins = []; parts = []; popups = [];
+  score = 0; combo = 0; frame = 0; speed = 2.6; gap = 170; shake = 0; flash = 0; newBest = false;
+  state = 'ready';
+}
+
+// ---------- Sound (ohne Dateien) ----------
+let ac;
+function tone(f, d, type = 'square', vol = 0.04, slide = 0) {
+  try {
+    ac = ac || new AudioContext();
+    const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime;
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + d);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d);
+  } catch (e) {}
+}
+
+// ---------- Effekte ----------
+function burst(px, py, n, colors, pow = 3, life = 40) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, s = Math.random() * pow;
+    parts.push({ x: px, y: py, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life, max: life, c: colors[i % colors.length], r: Math.random() * 3 + 1 });
+  }
+}
+function popup(t, px, py, col) { popups.push({ t, x: px, y: py, life: 50, c: col }); }
+
+// ---------- Steuerung ----------
+function flap() {
+  if (state === 'over') { if (frame > 40) reset(); return; }
+  if (state === 'ready') state = 'play';
+  ship.v = -7.4;
+  tone(320, 0.12, 'triangle', 0.05, 640);
+  burst(PX - 16, ship.y + 4, 8, ['#ffd166', '#ff8c42', '#fff'], 2, 22);
+}
+addEventListener('pointerdown', e => { e.preventDefault(); flap(); });
+addEventListener('keydown', e => { if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); flap(); } });
+
+function die() {
+  if (state !== 'play') return;
+  state = 'over'; frame = 0; shake = 18; flash = 1;
+  burst(PX, ship.y, 60, ['#ff4d6d', '#ffd166', '#fff', '#ff8c42'], 6, 60);
+  tone(200, 0.6, 'sawtooth', 0.06, 40);
+  if (navigator.vibrate) navigator.vibrate([60, 40, 120]);
+  if (score > best) { best = score; newBest = true; }
+  save();
+}
+
+// ---------- Spiellogik ----------
+function spawn() {
+  const top = 70 + Math.random() * (H - gap - 140);
+  // ab 15 Punkten bewegen sich manche Tore auf und ab
+  const moving = score >= 15 && Math.random() < 0.4;
+  walls.push({ x: W + 10, top, base: top, moving, ph: Math.random() * 6, scored: false, seed: Math.random() * 1000 });
+  if (Math.random() < 0.6) coins.push({ x: W + 10 + 34, y: top + gap / 2, t: 0, taken: false, gold: Math.random() < 0.15 });
+}
+
+function update() {
+  frame++;
+  for (const s of stars) { s.x -= s.z * (state === 'play' ? speed * 0.4 : 0.4); if (s.x < 0) { s.x = W; s.y = Math.random() * H; } }
+  for (const p of planets) { p.x -= p.s * (state === 'play' ? speed / 2.6 : 0.3); if (p.x < -p.r * 2) { p.x = W + p.r * 2; p.y = 80 + Math.random() * 400; } }
+  parts = parts.filter(p => (p.x += p.vx, p.y += p.vy, p.vx *= 0.96, p.vy *= 0.96, --p.life > 0));
+  popups = popups.filter(p => (p.y -= 0.8, --p.life > 0));
+  shake *= 0.85; flash *= 0.9;
+
+  if (state === 'ready') { ship.y = H / 2 + Math.sin(frame / 12) * 8; if (frame % 3 === 0) burst(PX - 18, ship.y + 4, 1, ['#ff8c42', '#ffd166'], 1, 18); return; }
+  if (state === 'over') { if (ship.y < H + 40) { ship.v += 0.5; ship.y += ship.v; } return; }
+
+  ship.v = Math.min(ship.v + 0.42, 10); ship.y += ship.v;
+  if (frame % 2 === 0) parts.push({ x: PX - 18, y: ship.y + 4, vx: -2 - Math.random(), vy: (Math.random() - 0.5), life: 20, max: 20, c: Math.random() < 0.5 ? '#ff8c42' : '#ffd166', r: 2 + Math.random() * 2 });
+
+  // Schwierigkeit steigt langsam
+  speed = Math.min(2.6 + score * 0.06, 5.2);
+  gap = Math.max(170 - score * 1.5, 128);
+  const every = Math.round(230 / speed);
+  if (frame % every === 0) spawn();
+
+  for (const w of walls) {
+    w.x -= speed;
+    if (w.moving) w.top = w.base + Math.sin(frame / 30 + w.ph) * 40;
+    if (!w.scored && w.x + 64 < PX) {
+      w.scored = true; score++;
+      // Perfekt durch die Mitte = Combo-Bonus
+      const mid = w.top + gap / 2;
+      if (Math.abs(ship.y - mid) < 22) { combo++; if (combo >= 2) { score += 1; popup('PERFEKT x' + combo + '  +1', PX + 40, ship.y - 30, '#7cff9e'); tone(1200, 0.15, 'square', 0.04, 1600); } }
+      else combo = 0;
+      tone(880, 0.08, 'square', 0.035);
+      if (score > 0 && score % 10 === 0) { popup('SCHNELLER!', W / 2, H / 2 - 120, '#ff7eb3'); flash = 0.4; }
+    }
+    if (PX + R > w.x && PX - R < w.x + 64 && (ship.y - R < w.top || ship.y + R > w.top + gap)) die();
+  }
+  walls = walls.filter(w => w.x > -80);
+
+  for (const k of coins) {
+    k.x -= speed; k.t++;
+    const w = walls.find(w => Math.abs(w.x + 32 - k.x) < 40);
+    if (w && w.moving) k.y = w.top + gap / 2;
+    if (!k.taken && Math.hypot(k.x - PX, k.y - ship.y) < R + 12) {
+      k.taken = true; const v = k.gold ? 5 : 1; bank += v;
+      popup('+' + v + ' 🪙', k.x, k.y - 10, '#ffd166');
+      burst(k.x, k.y, 14, ['#ffd166', '#fff3b0'], 3, 30);
+      tone(k.gold ? 1500 : 1100, 0.1, 'sine', 0.06, k.gold ? 2200 : 1500);
+    }
+  }
+  coins = coins.filter(k => k.x > -30 && !k.taken);
+
+  if (ship.y > H - R || ship.y < -R * 2) die();
+}
+
+// ---------- Zeichnen ----------
+function rr(px, py, w, h, r) { x.beginPath(); x.roundRect(px, py, w, h, r); }
+
+function drawWall(px, py, h, seed, cap) {
+  // Asteroiden-Säule mit Kratern
+  const g = x.createLinearGradient(px, 0, px + 64, 0);
+  g.addColorStop(0, '#3d2b56'); g.addColorStop(0.5, '#6b4f8f'); g.addColorStop(1, '#2a1d3d');
+  x.fillStyle = g; rr(px, py, 64, h, 10); x.fill();
+  x.fillStyle = 'rgba(0,0,0,0.25)';
+  for (let i = 0; i < h / 40; i++) {
+    const cx = px + 12 + ((seed * (i + 3)) % 40), cy = py + 20 + i * 40;
+    x.beginPath(); x.arc(cx, cy, 5 + (seed * i) % 6, 0, 7); x.fill();
+  }
+  // leuchtender Rand am Tor
+  const cy = cap === 'bottom' ? py + h - 10 : py;
+  x.shadowColor = '#00f0ff'; x.shadowBlur = 18;
+  x.fillStyle = '#00e5ff'; rr(px - 6, cy, 76, 10, 5); x.fill();
+  x.shadowBlur = 0;
+}
+
+function drawShip(y, v) {
+  x.save(); x.translate(PX, y); x.rotate(Math.max(-0.5, Math.min(1, v / 12)));
+  // Flamme
+  const fl = 10 + Math.random() * 8;
+  x.fillStyle = '#ff8c42'; x.beginPath(); x.moveTo(-16, -6); x.lineTo(-16 - fl, 0); x.lineTo(-16, 6); x.fill();
+  // Körper
+  const g = x.createLinearGradient(0, -14, 0, 14); g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#a9b4d6');
+  x.fillStyle = g; x.beginPath();
+  x.moveTo(22, 0); x.quadraticCurveTo(10, -14, -16, -10); x.lineTo(-16, 10); x.quadraticCurveTo(10, 14, 22, 0); x.fill();
+  // Flossen
+  x.fillStyle = '#ff4d6d';
+  x.beginPath(); x.moveTo(-8, -10); x.lineTo(-18, -18); x.lineTo(-16, -8); x.fill();
+  x.beginPath(); x.moveTo(-8, 10); x.lineTo(-18, 18); x.lineTo(-16, 8); x.fill();
+  // Fenster
+  x.fillStyle = '#00e5ff'; x.beginPath(); x.arc(5, 0, 5, 0, 7); x.fill();
+  x.fillStyle = 'rgba(255,255,255,.7)'; x.beginPath(); x.arc(3.5, -1.5, 1.8, 0, 7); x.fill();
+  x.restore();
+}
+
+function txt(t, px, py, size, col = '#fff', align = 'center') {
+  x.font = `900 ${size}px system-ui,sans-serif`; x.textAlign = align; x.textBaseline = 'middle';
+  x.lineWidth = size / 6; x.strokeStyle = '#0b0820'; x.strokeText(t, px, py);
+  x.fillStyle = col; x.fillText(t, px, py);
+}
+
+function medal() {
+  if (score >= 50) return ['PLATIN', '#e5f4ff'];
+  if (score >= 30) return ['GOLD', '#ffd166'];
+  if (score >= 20) return ['SILBER', '#cfd8e3'];
+  if (score >= 10) return ['BRONZE', '#d68a4c'];
+  return null;
+}
+
+function draw() {
+  x.save();
+  if (shake > 0.5) x.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+
+  // Himmel
+  const sky = x.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, '#0b0820'); sky.addColorStop(0.6, '#24124a'); sky.addColorStop(1, '#4a1d5e');
+  x.fillStyle = sky; x.fillRect(-20, -20, W + 40, H + 40);
+  for (const s of stars) { x.globalAlpha = s.z * (0.6 + 0.4 * Math.sin(frame / 20 + s.x)); x.fillStyle = '#fff'; x.fillRect(s.x, s.y, s.z * 2.2, s.z * 2.2); }
+  x.globalAlpha = 1;
+  for (const p of planets) {
+    const g = x.createRadialGradient(p.x - p.r / 3, p.y - p.r / 3, 2, p.x, p.y, p.r);
+    g.addColorStop(0, p.c1); g.addColorStop(1, p.c2);
+    x.fillStyle = g; x.beginPath(); x.arc(p.x, p.y, p.r, 0, 7); x.fill();
+    if (p.ring) { x.strokeStyle = 'rgba(255,200,240,.5)'; x.lineWidth = 4; x.beginPath(); x.ellipse(p.x, p.y, p.r * 1.7, p.r * 0.4, -0.3, 0, 7); x.stroke(); }
+  }
+
+  for (const w of walls) { drawWall(w.x, -20, w.top + 20, w.seed, 'bottom'); drawWall(w.x, w.top + gap, H - w.top - gap + 20, w.seed + 7, 'top'); }
+
+  for (const k of coins) {
+    const sx = Math.abs(Math.cos(k.t / 10));
+    x.save(); x.translate(k.x, k.y); x.scale(sx, 1);
+    x.shadowColor = k.gold ? '#ff7eb3' : '#ffd166'; x.shadowBlur = 15;
+    x.fillStyle = k.gold ? '#ff7eb3' : '#ffd166'; x.beginPath(); x.arc(0, 0, 10, 0, 7); x.fill();
+    x.shadowBlur = 0; x.fillStyle = 'rgba(255,255,255,.6)'; x.fillRect(-2, -6, 4, 12);
+    x.restore();
+  }
+
+  for (const p of parts) { x.globalAlpha = p.life / p.max; x.fillStyle = p.c; x.beginPath(); x.arc(p.x, p.y, p.r, 0, 7); x.fill(); }
+  x.globalAlpha = 1;
+
+  if (state !== 'over' || ship.y < H + 30) if (state !== 'over' || frame < 2) drawShip(ship.y, ship.v);
+
+  for (const p of popups) { x.globalAlpha = Math.min(1, p.life / 20); txt(p.t, p.x, p.y, 18, p.c); }
+  x.globalAlpha = 1;
+  x.restore();
+
+  if (flash > 0.02) { x.fillStyle = `rgba(255,255,255,${flash * 0.6})`; x.fillRect(0, 0, W, H); }
+
+  // HUD
+  txt('🪙 ' + bank, W - 14, 26, 18, '#ffd166', 'right');
+  if (state === 'play') { txt(score, W / 2, 80, 60); if (combo >= 2) txt('Combo x' + combo, W / 2, 122, 18, '#7cff9e'); }
+
+  if (state === 'ready') {
+    txt('ASTRO', W / 2, 170, 54, '#00e5ff');
+    txt('HÜPFER', W / 2, 220, 54, '#ff7eb3');
+    txt('Tippen zum Starten', W / 2, 440 + Math.sin(frame / 10) * 4, 22);
+    txt('Mitte treffen = Combo-Bonus', W / 2, 480, 15, '#7cff9e');
+    txt('Rekord: ' + best, W / 2, 520, 18, '#ffd166');
+  }
+
+  if (state === 'over' && frame > 20) {
+    const t = Math.min(1, (frame - 20) / 15), oy = (1 - t) * 60;
+    x.globalAlpha = t;
+    x.fillStyle = 'rgba(11,8,32,.85)'; x.strokeStyle = '#00e5ff'; x.lineWidth = 3;
+    rr(40, 170 + oy, W - 80, 290, 20); x.fill(); x.stroke();
+    txt('GAME OVER', W / 2, 210 + oy, 36, '#ff4d6d');
+    txt('Punkte', W / 2 - 70, 260 + oy, 15, '#aab'); txt(score, W / 2 - 70, 292 + oy, 36);
+    txt('Rekord', W / 2 + 70, 260 + oy, 15, '#aab'); txt(best, W / 2 + 70, 292 + oy, 36, '#ffd166');
+    const m = medal();
+    if (m) {
+      x.shadowColor = m[1]; x.shadowBlur = 20; x.fillStyle = m[1];
+      x.beginPath(); x.arc(W / 2, 350 + oy, 22, 0, 7); x.fill(); x.shadowBlur = 0;
+      txt('★', W / 2, 351 + oy, 24, '#0b0820'); txt(m[0], W / 2, 388 + oy, 16, m[1]);
+    } else txt('Noch ' + (10 - score) + ' bis Bronze!', W / 2, 360 + oy, 17, '#d68a4c');
+    if (newBest) txt('NEUER REKORD!', W / 2, 150 + Math.sin(frame / 6) * 4, 26, '#7cff9e');
+    if (frame > 40) txt('Tippen für Neustart', W / 2, 430 + oy, 18, '#00e5ff');
+    x.globalAlpha = 1;
+  }
+}
+
+function loop() { update(); draw(); requestAnimationFrame(loop); }
+reset(); loop();
+</script>
+</body>
+</html>
