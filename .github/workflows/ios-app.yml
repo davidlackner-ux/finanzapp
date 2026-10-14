@@ -72,6 +72,7 @@ jobs:
           BUILD_NUMBER: ${{ github.run_number }}
         run: |
           set -euo pipefail
+          APP_VERSION=$(node -p "require('./package.json').version")
           KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
           printf '%s\n' "$ASC_KEY_P8" > "$KEY_PATH"
           AUTH=(-allowProvisioningUpdates
@@ -84,7 +85,7 @@ jobs:
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
             "${AUTH[@]}" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic \
-            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            MARKETING_VERSION="$APP_VERSION" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             archive | tail -n 60
 
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
@@ -107,7 +108,7 @@ jobs:
             -exportPath "$RUNNER_TEMP/export" \
             "${AUTH[@]}"
 
-          echo "### ✅ Build $BUILD_NUMBER wurde zu App Store Connect hochgeladen" >> "$GITHUB_STEP_SUMMARY"
+          echo "### ✅ Version $APP_VERSION (Build $BUILD_NUMBER) wurde zu App Store Connect hochgeladen" >> "$GITHUB_STEP_SUMMARY"
           echo "In ca. 10–30 Minuten erscheint er in TestFlight." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Schlüssel entfernen

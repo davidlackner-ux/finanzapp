@@ -1,6 +1,6 @@
 // Offline: Spiel wird beim ersten Öffnen gespeichert und im Hintergrund aktualisiert.
 const CACHE = 'astro-huepfer-v1';
-const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
+const FILES = ['./', 'index.html', 'manifest.webmanifest', 'datenschutz.html', 'support.html', 'seiten.css', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
