@@ -123,7 +123,9 @@ Dann in App Store Connect bei deiner App:
 4. **App-Datenschutz**: „Wir erfassen keine Daten von dieser App“.
 5. **Preise und Verfügbarkeit**: Kostenlos, alle Länder.
 6. **EU-Händlerstatus (Digital Services Act)**, unter **Business** → **Compliance**: Wer mit der App Geld verdient, gilt als Händler, und dann werden **Adresse und Telefonnummer öffentlich** im App Store angezeigt. Für ein kostenloses Hobby-Spiel ohne Werbung kann man in der Regel „kein Händler“ angeben.
-7. Bei **Build** den hochgeladenen Build auswählen.
+7. **Informationen für die App-Prüfung**: Vor- und Nachname, E-Mail und Telefonnummer im internationalen Format (z. B. +49 …). Die Hinweise fürs Prüfteam stehen in `store/app-store-texte.md`.
+8. Fragen zu **Inhaltsrechten** („Enthält die App Inhalte Dritter?“) mit **Nein** beantworten.
+9. Bei **Build** den hochgeladenen Build auswählen.
 
 ### Schritt 9: Zur Prüfung einreichen
 
@@ -134,6 +136,8 @@ Dann in App Store Connect bei deiner App:
 1. Spiel in `www/` ändern.
 2. In `package.json` die `"version"` erhöhen, z. B. von `1.0.0` auf `1.0.1`.
 3. Workflow wie in Schritt 6 starten, dann in App Store Connect eine neue Version anlegen und einreichen.
+
+Ab **April 2027** verlangt Apple Builds mit Xcode 27. Dann muss in `.github/workflows/ios-app.yml` die Xcode-Version angehoben werden, dabei helfe ich gern.
 
 Die Build-Nummer zählt GitHub automatisch hoch. Jeder Push auf `spiel/` startet außerdem einen Probe-Build, der zeigt, ob die App noch fehlerfrei baut. Hochgeladen wird dabei nichts.
 

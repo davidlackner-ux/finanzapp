@@ -26,8 +26,9 @@ concurrency:
 
 jobs:
   ios:
-    # macOS 26 mit Xcode 26.x: Apple nimmt seit April 2026 nur noch Builds mit Xcode 26 oder neuer an.
-    runs-on: macos-26
+    # macOS 15 ist sofort verfügbar; Xcode 26.3 wird unten ausgewählt.
+    # Apple nimmt seit April 2026 nur noch Builds mit Xcode 26 oder neuer an.
+    runs-on: macos-15
     timeout-minutes: 45
     env:
       HAS_SIGNING: ${{ secrets.ASC_KEY_ID != '' && secrets.ASC_ISSUER_ID != '' && secrets.ASC_KEY_P8 != '' && secrets.APPLE_TEAM_ID != '' }}
@@ -44,8 +45,10 @@ jobs:
           cache: npm
           cache-dependency-path: spiel/package-lock.json
 
-      - name: Xcode-Version
-        run: xcodebuild -version
+      - name: Xcode 26 auswählen
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.3.app
+          xcodebuild -version
 
       - name: Abhängigkeiten installieren
         run: npm ci
@@ -61,8 +64,8 @@ jobs:
 
       # Archiv OHNE Signatur: braucht weder Entwickler-Zertifikat noch registriertes iPhone.
       # Signiert wird erst beim Hochladen mit Apples Cloud-Zertifikat.
-      # (Die App hat keine Entitlements. Kommen später Game Center, Push o. Ä. dazu, stattdessen
-      #  CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES CODE_SIGN_STYLE=Automatic verwenden.)
+      # (Die App hat keine Entitlements. Kommen später Game Center, Push o. Ä. dazu, ad-hoc signieren:
+      #  CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES PROVISIONING_PROFILE_SPECIFIER="")
       - name: Archiv bauen (ohne Signatur)
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
